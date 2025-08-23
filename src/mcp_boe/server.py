@@ -305,7 +305,7 @@ Obtiene la descripción de un código específico.
             
             try:
                 # Configuración de inicialización
-                async with mcp_boe.server.stdio.stdio_server() as (read_stream, write_stream):
+                async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
                     await self.server.run(
                         read_stream,
                         write_stream,
@@ -331,6 +331,8 @@ Obtiene la descripción de un código específico.
             asyncio.run(run_server())
         except KeyboardInterrupt:
             logger.info("Servidor interrumpido por el usuario")
+        except (BrokenPipeError, EOFError):
+            logger.info("Conexión cerrada por el cliente")
         except Exception as e:
             logger.error(f"Error fatal en el servidor: {e}")
             sys.exit(1)
@@ -546,27 +548,31 @@ def run_diagnostics():
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="Servidor MCP para el BOE")
-    parser.add_argument(
-        "--mode", 
-        choices=["server", "test", "diagnose"],
-        default="server",
-        help="Modo de operación"
-    )
-    parser.add_argument(
-        "--config",
-        action="store_true",
-        help="Usar configuración avanzada"
-    )
-    
-    args = parser.parse_args()
-    
-    if args.mode == "server":
-        if args.config:
-            main_with_config()
-        else:
-            main()
-    elif args.mode == "test":
-        run_test()
-    elif args.mode == "diagnose":
-        run_diagnostics()
+    try:
+        parser = argparse.ArgumentParser(description="Servidor MCP para el BOE")
+        parser.add_argument(
+            "--mode", 
+            choices=["server", "test", "diagnose"],
+            default="server",
+            help="Modo de operación"
+        )
+        parser.add_argument(
+            "--config",
+            action="store_true",
+            help="Usar configuración avanzada"
+        )
+        
+        args = parser.parse_args()
+        
+        if args.mode == "server":
+            if args.config:
+                main_with_config()
+            else:
+                main()
+        elif args.mode == "test":
+            run_test()
+        elif args.mode == "diagnose":
+            run_diagnostics()
+    except (SystemExit, ValueError):
+        # Manejar errores de argparse cuando stdout está cerrado
+        main()
