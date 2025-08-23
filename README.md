@@ -105,7 +105,7 @@ python examples/basic_usage.py departments
 {
   "mcpServers": {
     "mcp-boe": {
-      "command": "python",
+      "command": "/ruta/a/tu/conda/envs/tu_env/bin/python",
       "args": ["-m", "mcp_boe.server"],
       "env": {
         "PYTHONPATH": "/ruta/a/tu/MCP-BOE/src"
