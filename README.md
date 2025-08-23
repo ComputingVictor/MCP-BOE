@@ -2,6 +2,9 @@
 
 **Model Context Protocol para el Boletín Oficial del Estado español**
 
+<img width="512" height="512" alt="image" src="https://github.com/user-attachments/assets/cd1c5e79-add7-466c-bcbd-554b81a2fef9" />
+
+
 Un servidor MCP que permite a Claude y otros LLMs acceder a la API oficial del BOE para consultar legislación consolidada, sumarios diarios y tablas auxiliares del gobierno español.
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
