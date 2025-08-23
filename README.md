@@ -43,8 +43,8 @@ Un servidor MCP que permite a Claude y otros LLMs acceder a la API oficial del B
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/tuusuario/mcp-boe.git
-cd mcp-boe
+git clone https://github.com/ComputingVictor/MCP-BOE.git
+cd MCP-BOE
 
 # Instalar solo las dependencias básicas
 pip install -e .
@@ -384,6 +384,6 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 ---
 
-**¿Tienes preguntas?** Abre un [issue](https://github.com/tuusuario/mcp-boe/issues) o envía un [pull request](https://github.com/tuusuario/mcp-boe/pulls).
+**¿Tienes preguntas?** Abre un [issue](https://github.com/ComputingVictor/MCP-BOE/issues) o envía un [pull request](https://github.com/ComputingVictor/MCP-BOE/pulls).
 
 **¿Te gusta el proyecto?** ¡Dale una ⭐ en GitHub!
