@@ -371,7 +371,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 **Víctor Viloria**
 - Email: vvictor.97@gmail.com
-- GitHub: [@tuusuario](https://github.com/tuusuario)
+- GitHub: [@ComputingVictor](https://github.com/ComputingVictor)
 
 ## 🙏 Agradecimientos
 
