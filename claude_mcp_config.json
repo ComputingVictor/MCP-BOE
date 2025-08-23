@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "mcp-boe": {
+      "command": "python",
+      "args": [
+        "-m", 
+        "mcp_boe.server"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/computingvictor/Documents/Workspace/MCP-BOE/src"
+      }
+    }
+  }
+}
