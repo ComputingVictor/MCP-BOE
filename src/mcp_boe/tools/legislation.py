@@ -377,7 +377,11 @@ class LegislationTools:
             if include_metadata:
                 metadata_response = await self.client.get_law_by_id(law_id, 'metadatos')
                 if metadata_response.get('data'):
-                    content_parts.append(self._format_law_metadata(metadata_response['data']))
+                    data = metadata_response['data']
+                    # Si la respuesta es una lista, tomar el primer elemento
+                    if isinstance(data, list) and len(data) > 0:
+                        data = data[0]
+                    content_parts.append(self._format_law_metadata(data))
 
             if include_analysis:
                 try:

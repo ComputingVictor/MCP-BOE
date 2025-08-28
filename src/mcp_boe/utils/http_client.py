@@ -14,7 +14,17 @@ import json
 import httpx
 from httpx import Response, RequestError, HTTPStatusError, TimeoutException
 
-from ..models.boe_models import APIResponse, APIError
+from ..models.boe_models import APIResponse
+
+
+class APIError(Exception):
+    """Excepción personalizada para errores de la API del BOE."""
+    def __init__(self, codigo: int, mensaje: str, detalles: str = "", timestamp: datetime = None):
+        self.codigo = codigo
+        self.mensaje = mensaje
+        self.detalles = detalles
+        self.timestamp = timestamp or datetime.now()
+        super().__init__(f"{mensaje} (código {codigo}): {detalles}")
 
 logger = logging.getLogger(__name__)
 

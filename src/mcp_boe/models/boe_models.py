@@ -489,7 +489,8 @@ class APIError(BaseModel):
 
 def validate_boe_identifier(identifier: str) -> bool:
     """Valida que un identificador BOE tenga el formato correcto."""
-    pattern = r'^(BOE|BORME)-S-\d{4}-\d{1,3}$'
+    # Soportar tanto sumarios (BOE-S) como legislación (BOE-A)
+    pattern = r'^(BOE|BORME)-[AS]-\d{4}-\d{1,5}$'
     return bool(re.match(pattern, identifier))
 
 
