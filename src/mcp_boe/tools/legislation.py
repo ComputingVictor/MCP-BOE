@@ -13,6 +13,11 @@ from datetime import datetime
 from mcp.types import TextContent, ImageContent, EmbeddedResource, Tool
 
 from ..utils.http_client import BOEHTTPClient, APIError
+from ..utils.warnings_handler import (
+    BOEWarnings,
+    SearchResultValidator,
+    format_search_validation_warning
+)
 from ..models.boe_models import (
     ConsolidatedLawSearchResult,
     ConsolidatedLaw,
@@ -214,9 +219,15 @@ class LegislationTools:
 
             # Validar fechas si se proporcionan
             if from_date and not validate_date_format(from_date):
-                raise ValueError(f"Formato de fecha inválido: {from_date}")
+                return [TextContent(
+                    type="text",
+                    text=BOEWarnings.invalid_parameter_warning("from_date", from_date, "AAAAMMDD")
+                )]
             if to_date and not validate_date_format(to_date):
-                raise ValueError(f"Formato de fecha inválido: {to_date}")
+                return [TextContent(
+                    type="text",
+                    text=BOEWarnings.invalid_parameter_warning("to_date", to_date, "AAAAMMDD")
+                )]
 
             # Construir query estructurada
             search_query = self.client.build_search_query(
@@ -244,12 +255,26 @@ class LegislationTools:
             if not response.get('data'):
                 return [TextContent(
                     type="text",
-                    text="No se encontraron normas que coincidan con los criterios de búsqueda."
+                    text=BOEWarnings.no_results_message({
+                        'query': query,
+                        'from_date': from_date,
+                        'to_date': to_date
+                    })
                 )]
 
             results = response['data']
             if not isinstance(results, list):
                 results = [results]
+
+            # Validar si los resultados corresponden a la búsqueda
+            validation_warning = ""
+            if query or title:
+                search_text = query or title
+                validation = SearchResultValidator.validate_search_results(
+                    search_text, results, log_mismatches=True
+                )
+                if validation["likely_incorrect"]:
+                    validation_warning = format_search_validation_warning(validation)
 
             # Filtrar normas derogadas si no se solicitan
             if not include_derogated:
@@ -258,11 +283,21 @@ class LegislationTools:
             if not results:
                 return [TextContent(
                     type="text",
-                    text="No se encontraron normas vigentes que coincidan con los criterios de búsqueda."
+                    text=BOEWarnings.no_results_message({
+                        'query': query,
+                        'from_date': from_date,
+                        'to_date': to_date
+                    })
                 )]
 
-            # Formatear resultados
-            formatted_results = self._format_search_results(results, limit)
+            # Formatear resultados con advertencias
+            formatted_results = self._format_search_results(results, limit, query or title)
+            
+            # Añadir advertencias si hay búsqueda por texto
+            if query or title:
+                formatted_results = formatted_results + "\n" + BOEWarnings.search_warning(query or title)
+                if validation_warning:
+                    formatted_results = formatted_results + "\n" + validation_warning
             
             return [TextContent(
                 type="text",
@@ -282,7 +317,7 @@ class LegislationTools:
                 text=f"Error interno: {str(e)}"
             )]
 
-    def _format_search_results(self, results: List[Dict[str, Any]], limit: int) -> str:
+    def _format_search_results(self, results: List[Dict[str, Any]], limit: int, search_text: Optional[str] = None) -> str:
         """Formatea los resultados de búsqueda para mostrar al usuario."""
         output = []
         
@@ -367,7 +402,10 @@ class LegislationTools:
 
             # Validar ID
             if not validate_boe_identifier(law_id):
-                raise ValueError(f"Identificador de norma inválido: {law_id}")
+                return [TextContent(
+                    type="text",
+                    text=BOEWarnings.invalid_parameter_warning("law_id", law_id, "BOE-A-YYYY-NNNNN")
+                )]
 
             logger.info(f"Obteniendo norma consolidada: {law_id}")
 
@@ -420,7 +458,7 @@ class LegislationTools:
             logger.error(f"Error de API obteniendo norma {law_id}: {e}")
             return [TextContent(
                 type="text",
-                text=f"Error accediendo a la norma {law_id}: {e.mensaje}"
+                text=BOEWarnings.api_error_message(e.codigo, f"Norma: {law_id}")
             )]
         except Exception as e:
             logger.error(f"Error inesperado obteniendo norma {law_id}: {e}")
