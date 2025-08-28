@@ -19,6 +19,7 @@ from .utils.http_client import BOEHTTPClient
 from .tools.legislation import LegislationTools
 from .tools.summaries import SummaryTools
 from .tools.auxiliary import AuxiliaryTools
+from .tools.common_laws_tool import CommonLawsTools
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,7 @@ class BOEMCPServer:
         self.legislation_tools = None
         self.summary_tools = None
         self.auxiliary_tools = None
+        self.common_laws_tools = None
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -53,6 +55,9 @@ class BOEMCPServer:
             
             if self.auxiliary_tools:
                 tools.extend(self.auxiliary_tools.get_tools())
+            
+            if self.common_laws_tools:
+                tools.extend(self.common_laws_tools.get_tools())
             
             logger.info(f"Listando {len(tools)} herramientas disponibles")
             return tools
@@ -105,6 +110,14 @@ class BOEMCPServer:
                     return await self.auxiliary_tools.search_auxiliary_data(arguments)
                 elif name == "get_code_description":
                     return await self.auxiliary_tools.get_code_description(arguments)
+                
+                # Herramientas de leyes comunes
+                elif name == "list_common_laws":
+                    return await self.common_laws_tools.list_common_laws(arguments)
+                elif name == "search_common_laws":
+                    return await self.common_laws_tools.search_common_laws(arguments)
+                elif name == "get_recent_important_laws":
+                    return await self.common_laws_tools.get_recent_important_laws(arguments)
                 
                 else:
                     raise ValueError(f"Herramienta desconocida: {name}")
@@ -285,6 +298,7 @@ Obtiene la descripción de un código específico.
         self.legislation_tools = LegislationTools(self.http_client)
         self.summary_tools = SummaryTools(self.http_client)
         self.auxiliary_tools = AuxiliaryTools(self.http_client)
+        self.common_laws_tools = CommonLawsTools()
         
         logger.info("Servidor MCP BOE inicializado correctamente")
 

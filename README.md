@@ -184,6 +184,24 @@ curl "http://localhost:8000/auxiliary/code/7723"
 
 ## 💡 Ejemplos
 
+### Uso del Diccionario de Leyes Comunes (Recomendado)
+
+```python
+from mcp_boe.data.common_laws import (
+    CONSTITUCION,
+    LOPD,
+    LEY_39_2015,
+    search_laws_by_keyword
+)
+
+# Acceso directo a leyes importantes
+constitucion_id = CONSTITUCION  # "BOE-A-1978-31229"
+ley_proteccion_datos = LOPD     # "BOE-A-2018-16673"
+
+# Buscar en el diccionario
+leyes_laborales = search_laws_by_keyword("laboral")
+```
+
 ### Búsqueda de Legislación
 
 ```python
