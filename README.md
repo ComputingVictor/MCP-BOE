@@ -14,8 +14,8 @@ Un servidor MCP que permite a Claude y otros LLMs acceder a la API oficial del B
 
 ## 🚀 Características
 
-- **🔍 Búsqueda de Legislación**: Acceso a más de 50,000 normas consolidadas (ver [limitaciones](docs/API_LIMITATIONS.md))
-- **📰 Sumarios del BOE**: Acceder a publicaciones diarias del BOE y BORME con búsqueda funcional
+- **🔍 Búsqueda de Legislación**: Buscar en más de 50,000 normas consolidadas
+- **📰 Sumarios del BOE**: Acceder a publicaciones diarias del BOE y BORME  
 - **🏛️ Tablas Auxiliares**: Consultar códigos de departamentos, materias y rangos normativos
 - **⚡ API REST**: Interfaz HTTP para usar desde cualquier aplicación
 - **🤖 Compatible con MCP**: Funciona con Claude Code, Ollama y otros clientes MCP
@@ -336,7 +336,6 @@ MCP-BOE/
 
 ## 📚 Documentación Adicional
 
-- [Limitaciones de la API del BOE](docs/API_LIMITATIONS.md) - **Importante: Lea antes de usar**
 - [API Oficial del BOE](https://www.boe.es/datosabiertos/documentos/Manual_API.pdf)
 - [Model Context Protocol](https://modelcontextprotocol.io)
 - [Claude Code Documentation](https://docs.anthropic.com/claude/docs)
