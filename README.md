@@ -48,7 +48,7 @@ Si tienes [uvx](https://docs.astral.sh/uv/guides/tools/) instalado, puedes usar 
 uvx --version
 
 # Ejecutar directamente desde el repositorio
-uvx --from git+https://github.com/olivermontes/MCP-BOE.git mcp-boe --help
+uvx --from git+https://github.com/ComputingVictor/MCP-BOE.git mcp-boe --help
 ```
 
 ### Instalación desde el código fuente
@@ -137,7 +137,7 @@ uvx se encarga automáticamente de crear un entorno aislado y descargar todas la
 También puedes usar el archivo de configuración de ejemplo incluido:
 ```bash
 # Descargar y usar la configuración de ejemplo
-curl -O https://raw.githubusercontent.com/olivermontes/MCP-BOE/main/claude_mcp_config_uvx.json
+curl -O https://raw.githubusercontent.com/ComputingVictor/MCP-BOE/main/claude_mcp_config_uvx.json
 ```
 
 2. **Configurar en Claude Code**:
