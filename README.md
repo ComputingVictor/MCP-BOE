@@ -127,7 +127,8 @@ uvx se encarga automáticamente de crear un entorno aislado y descargar todas la
   "mcpServers": {
     "mcp-boe": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/olivermontes/MCP-BOE.git", "mcp-boe"]
+      "args": ["--from", "git+https://github.com/ComputingVictor/MCP-BOE.git", "mcp-boe"],
+      "transport": "stdio"
     }
   }
 }
@@ -158,6 +159,7 @@ curl -O https://raw.githubusercontent.com/olivermontes/MCP-BOE/main/claude_mcp_c
     "mcp-boe": {
       "command": "/ruta/a/tu/conda/envs/tu_env/bin/python",
       "args": ["-m", "mcp_boe.server"],
+      "transport": "stdio",
       "env": {
         "PYTHONPATH": "/ruta/a/tu/MCP-BOE/src"
       }
