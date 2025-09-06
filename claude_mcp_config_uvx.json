@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcp-boe": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/olivermontes/MCP-BOE.git", "mcp-boe"]
+    }
+  }
+}

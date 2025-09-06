@@ -39,6 +39,18 @@ Un servidor MCP que permite a Claude y otros LLMs acceder a la API oficial del B
 - Python 3.8 o superior
 - pip (gestor de paquetes de Python)
 
+### Instalación rápida con uvx (Recomendado)
+
+Si tienes [uvx](https://docs.astral.sh/uv/guides/tools/) instalado, puedes usar directamente el MCP servidor sin instalación manual:
+
+```bash
+# Verificar que uvx está instalado
+uvx --version
+
+# Ejecutar directamente desde el repositorio
+uvx --from git+https://github.com/olivermontes/MCP-BOE.git mcp-boe --help
+```
+
 ### Instalación desde el código fuente
 
 ```bash
@@ -98,6 +110,45 @@ python examples/basic_usage.py departments
 ## 🔧 Configuración con Claude
 
 ### Claude Code (Recomendado)
+
+#### Opción 1: Con uvx (Recomendado para simplicidad)
+
+**uvx** es una herramienta que simplifica enormemente la instalación y ejecución de paquetes Python. Con uvx no necesitas:
+- Crear entornos virtuales manualmente
+- Instalar dependencias
+- Configurar variables de entorno como PYTHONPATH
+
+uvx se encarga automáticamente de crear un entorno aislado y descargar todas las dependencias necesarias.
+
+1. **Usar uvx directamente**:
+
+```json
+{
+  "mcpServers": {
+    "mcp-boe": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/olivermontes/MCP-BOE.git", "mcp-boe"]
+    }
+  }
+}
+```
+
+También puedes usar el archivo de configuración de ejemplo incluido:
+```bash
+# Descargar y usar la configuración de ejemplo
+curl -O https://raw.githubusercontent.com/olivermontes/MCP-BOE/main/claude_mcp_config_uvx.json
+```
+
+2. **Configurar en Claude Code**:
+```bash
+# Usar configuración personalizada
+/config-mcp /ruta/a/tu/claude_mcp_config.json
+
+# O usar configuración de ejemplo
+/config-mcp claude_mcp_config_uvx.json
+```
+
+#### Opción 2: Instalación tradicional
 
 1. **Crear archivo de configuración MCP**:
 
