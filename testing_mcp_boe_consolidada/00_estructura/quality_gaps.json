@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "project": "mcp-boe-consolidada",
+  "description": "Registro de gaps de calidad identificados durante testing exploratorio",
+  "created": "2025-11-23",
+  "last_updated": "2025-11-23",
+  "gaps": {},
+  "statistics": {
+    "total": 0,
+    "by_impact": {
+      "alto": 0,
+      "medio": 0,
+      "bajo": 0
+    },
+    "by_status": {
+      "open": 0,
+      "evaluating": 0,
+      "accepted": 0,
+      "rejected": 0,
+      "implemented": 0
+    }
+  },
+  "decision_log": []
+}
