@@ -465,22 +465,47 @@ class SearchParameters(BaseModel):
 # MODELOS PARA RESPUESTAS DE ERROR
 # ============================================================================
 
-class APIError(BaseModel):
-    """Error de la API del BOE."""
-    codigo: int = Field(..., description="Código de error HTTP")
-    mensaje: str = Field(..., description="Mensaje de error")
-    detalles: Optional[str] = Field(None, description="Detalles adicionales del error")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Momento del error")
+class APIError(Exception):
+    """
+    Error de la API del BOE.
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "codigo": 404,
-                "mensaje": "La información solicitada no existe",
-                "detalles": "El identificador BOE-A-2025-99999 no se encontró",
-                "timestamp": "2025-01-23T10:30:00Z"
-            }
+    Hereda de Exception para poder ser usado en bloques try/except.
+    """
+
+    def __init__(
+        self,
+        codigo: int,
+        mensaje: str,
+        detalles: Optional[str] = None,
+        timestamp: Optional[datetime] = None
+    ):
+        self.codigo = codigo
+        self.mensaje = mensaje
+        self.detalles = detalles
+        self.timestamp = timestamp or datetime.now()
+        super().__init__(f"[{codigo}] {mensaje}")
+
+    def __str__(self) -> str:
+        base = f"[{self.codigo}] {self.mensaje}"
+        if self.detalles:
+            base += f" - {self.detalles}"
+        return base
+
+    def __repr__(self) -> str:
+        return f"APIError(codigo={self.codigo}, mensaje='{self.mensaje}', detalles={self.detalles!r})"
+
+    def to_dict(self) -> dict:
+        """Serializar error para logging/respuesta."""
+        return {
+            "codigo": self.codigo,
+            "mensaje": self.mensaje,
+            "detalles": self.detalles,
+            "timestamp": self.timestamp.isoformat()
         }
+
+    # Ejemplo de uso documentado en docstring
+    # APIError(codigo=404, mensaje="La información solicitada no existe",
+    #          detalles="El identificador BOE-A-2025-99999 no se encontró")
 
 
 # ============================================================================
