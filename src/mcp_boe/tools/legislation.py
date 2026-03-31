@@ -567,11 +567,29 @@ class LegislationTools:
 
     def _format_law_text(self, text_data: Dict[str, Any], full_text: bool = False) -> str:
         """Formatea el texto de una norma."""
-        if full_text:
-            return "## 📄 Texto completo\n\n⚠️ El texto completo es muy extenso. Use `get_law_structure` para ver la estructura y `get_law_text_block` para obtener secciones específicas."
-        
-        # Para preview, solo mostramos la estructura
-        return self._format_law_structure(text_data)
+        output = []
+        output.append("## 📄 Texto consolidado")
+
+        bloques = text_data.get('texto', [])
+        if not isinstance(bloques, list):
+            bloques = [bloques] if bloques else []
+
+        if not bloques:
+            return "## 📄 Texto consolidado\n\nNo hay contenido de texto disponible."
+
+        max_bloques = len(bloques) if full_text else min(5, len(bloques))
+        for bloque in bloques[:max_bloques]:
+            titulo = bloque.get('titulo', '')
+            contenido = bloque.get('contenido_html', bloque.get('texto', ''))
+            if titulo:
+                output.append(f"\n### {titulo}")
+            if contenido:
+                output.append(self._clean_html_content(str(contenido)))
+
+        if not full_text and len(bloques) > max_bloques:
+            output.append(f"\n*... ({len(bloques) - max_bloques} bloques adicionales. Use `get_law_structure` + `get_law_text_block` para acceder a secciones concretas.)*")
+
+        return "\n".join(output)
 
     def _format_law_structure(self, text_data: Dict[str, Any]) -> str:
         """Formatea la estructura de una norma."""

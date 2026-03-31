@@ -488,9 +488,15 @@ class APIError(BaseModel):
 # ============================================================================
 
 def validate_boe_identifier(identifier: str) -> bool:
-    """Valida que un identificador BOE tenga el formato correcto."""
-    pattern = r'^(BOE|BORME)-S-\d{4}-\d{1,3}$'
-    return bool(re.match(pattern, identifier))
+    """Valida que un identificador BOE tenga el formato correcto.
+
+    Soporta tanto IDs de sumarios (BOE-S-YYYY-NNN) como de normas (BOE-A-YYYY-NNNNN).
+    """
+    # IDs de normas consolidadas: BOE-A-YYYY-NNNNN o BORME-A-YYYY-NNNNN
+    legislation_pattern = r'^(BOE|BORME)-[A-Z]-\d{4}-\d{1,5}$'
+    # IDs de sumarios: BOE-S-YYYY-NNN o BORME-S-YYYY-NNN
+    summary_pattern = r'^(BOE|BORME)-S-\d{4}-\d{1,3}$'
+    return bool(re.match(legislation_pattern, identifier) or re.match(summary_pattern, identifier))
 
 
 def validate_date_format(date_str: str) -> bool:

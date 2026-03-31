@@ -45,9 +45,6 @@ dependencies = [
     # XML parsing (for BOE responses)
     "lxml>=4.9.0",
     
-    # JSON handling improvements
-    "orjson>=3.9.0",
-    
     # Async support
     "anyio>=3.6.0",
 ]
@@ -84,10 +81,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tuusuario/mcp-boe"
-Documentation = "https://github.com/tuusuario/mcp-boe#readme"
-Repository = "https://github.com/tuusuario/mcp-boe.git"
-"Bug Tracker" = "https://github.com/tuusuario/mcp-boe/issues"
+Homepage = "https://github.com/ComputingVictor/MCP-BOE"
+Documentation = "https://github.com/ComputingVictor/MCP-BOE#readme"
+Repository = "https://github.com/ComputingVictor/MCP-BOE.git"
+"Bug Tracker" = "https://github.com/ComputingVictor/MCP-BOE/issues"
 
 [project.scripts]
 mcp-boe = "mcp_boe.server:main"
@@ -150,7 +147,6 @@ strict_equality = true
 [[tool.mypy.overrides]]
 module = [
     "lxml.*",
-    "orjson.*",
 ]
 ignore_missing_imports = true
 

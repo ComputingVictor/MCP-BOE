@@ -206,7 +206,7 @@ class SummaryTools:
                 text=f"Error accediendo al sumario del BOE: {e.mensaje}"
             )]
         except Exception as e:
-            logger.error(f"Error inesperado obteniendo sumario BORME: {e}")
+            logger.error(f"Error inesperado obteniendo sumario BOE: {e}")
             return [TextContent(
                 type="text",
                 text=f"Error interno: {str(e)}"

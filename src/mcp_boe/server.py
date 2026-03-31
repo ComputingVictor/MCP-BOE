@@ -64,51 +64,38 @@ class BOEMCPServer:
             """Maneja la llamada a una herramienta específica."""
             if arguments is None:
                 arguments = {}
-            
+
             logger.info(f"Llamando herramienta: {name} con argumentos: {arguments}")
-            
+
+            # Tabla de despacho: evita una cadena larga de if/elif
+            dispatch: dict[str, Any] = {
+                # Legislación
+                "search_consolidated_legislation": lambda a: self.legislation_tools.search_consolidated_legislation(a),
+                "get_consolidated_law":            lambda a: self.legislation_tools.get_consolidated_law(a),
+                "get_law_text_block":              lambda a: self.legislation_tools.get_law_text_block(a),
+                "get_law_structure":               lambda a: self.legislation_tools.get_law_structure(a),
+                "find_related_laws":               lambda a: self.legislation_tools.find_related_laws(a),
+                # Sumarios
+                "get_boe_summary":                 lambda a: self.summary_tools.get_boe_summary(a),
+                "get_borme_summary":               lambda a: self.summary_tools.get_borme_summary(a),
+                "search_recent_boe":               lambda a: self.summary_tools.search_recent_boe(a),
+                "get_weekly_summary":              lambda a: self.summary_tools.get_weekly_summary(a),
+                # Tablas auxiliares
+                "get_departments_table":           lambda a: self.auxiliary_tools.get_departments_table(a),
+                "get_legal_ranges_table":          lambda a: self.auxiliary_tools.get_legal_ranges_table(a),
+                "get_matters_table":               lambda a: self.auxiliary_tools.get_matters_table(a),
+                "get_scopes_table":                lambda a: self.auxiliary_tools.get_scopes_table(a),
+                "get_consolidation_states_table":  lambda a: self.auxiliary_tools.get_consolidation_states_table(a),
+                "search_auxiliary_data":           lambda a: self.auxiliary_tools.search_auxiliary_data(a),
+                "get_code_description":            lambda a: self.auxiliary_tools.get_code_description(a),
+            }
+
+            handler = dispatch.get(name)
+            if handler is None:
+                raise ValueError(f"Herramienta desconocida: {name}")
+
             try:
-                # Herramientas de legislación
-                if name == "search_consolidated_legislation":
-                    return await self.legislation_tools.search_consolidated_legislation(arguments)
-                elif name == "get_consolidated_law":
-                    return await self.legislation_tools.get_consolidated_law(arguments)
-                elif name == "get_law_text_block":
-                    return await self.legislation_tools.get_law_text_block(arguments)
-                elif name == "get_law_structure":
-                    return await self.legislation_tools.get_law_structure(arguments)
-                elif name == "find_related_laws":
-                    return await self.legislation_tools.find_related_laws(arguments)
-                
-                # Herramientas de sumarios
-                elif name == "get_boe_summary":
-                    return await self.summary_tools.get_boe_summary(arguments)
-                elif name == "get_borme_summary":
-                    return await self.summary_tools.get_borme_summary(arguments)
-                elif name == "search_recent_boe":
-                    return await self.summary_tools.search_recent_boe(arguments)
-                elif name == "get_weekly_summary":
-                    return await self.summary_tools.get_weekly_summary(arguments)
-                
-                # Herramientas auxiliares
-                elif name == "get_departments_table":
-                    return await self.auxiliary_tools.get_departments_table(arguments)
-                elif name == "get_legal_ranges_table":
-                    return await self.auxiliary_tools.get_legal_ranges_table(arguments)
-                elif name == "get_matters_table":
-                    return await self.auxiliary_tools.get_matters_table(arguments)
-                elif name == "get_scopes_table":
-                    return await self.auxiliary_tools.get_scopes_table(arguments)
-                elif name == "get_consolidation_states_table":
-                    return await self.auxiliary_tools.get_consolidation_states_table(arguments)
-                elif name == "search_auxiliary_data":
-                    return await self.auxiliary_tools.search_auxiliary_data(arguments)
-                elif name == "get_code_description":
-                    return await self.auxiliary_tools.get_code_description(arguments)
-                
-                else:
-                    raise ValueError(f"Herramienta desconocida: {name}")
-                    
+                return await handler(arguments)
             except Exception as e:
                 logger.error(f"Error ejecutando herramienta {name}: {e}")
                 return [
@@ -117,6 +104,148 @@ class BOEMCPServer:
                         text=f"Error ejecutando {name}: {str(e)}"
                     )
                 ]
+
+        @self.server.list_prompts()
+        async def handle_list_prompts() -> list[types.Prompt]:
+            """Lista los prompts disponibles."""
+            return [
+                types.Prompt(
+                    name="buscar_legislacion",
+                    description="Busca y resume una norma o conjunto de normas del BOE",
+                    arguments=[
+                        types.PromptArgument(name="tema", description="Tema o nombre de la norma a buscar", required=True),
+                        types.PromptArgument(name="departamento", description="Ministerio u organismo emisor (opcional)", required=False),
+                    ],
+                ),
+                types.Prompt(
+                    name="analizar_norma",
+                    description="Analiza en profundidad una norma específica: metadatos, estado, referencias y estructura",
+                    arguments=[
+                        types.PromptArgument(name="id_norma", description="Identificador BOE (ej: BOE-A-2015-10566)", required=True),
+                    ],
+                ),
+                types.Prompt(
+                    name="resumen_boe_dia",
+                    description="Obtiene y resume las publicaciones más relevantes del BOE de una fecha concreta",
+                    arguments=[
+                        types.PromptArgument(name="fecha", description="Fecha en formato AAAAMMDD (ej: 20240529)", required=True),
+                        types.PromptArgument(name="seccion", description="Sección del BOE (1, 2A, 2B, 3, 4, 5) — opcional", required=False),
+                    ],
+                ),
+                types.Prompt(
+                    name="comparar_normas",
+                    description="Compara dos normas: busca relaciones de modificación o derogación entre ellas",
+                    arguments=[
+                        types.PromptArgument(name="id_norma_1", description="Identificador de la primera norma", required=True),
+                        types.PromptArgument(name="id_norma_2", description="Identificador de la segunda norma", required=True),
+                    ],
+                ),
+            ]
+
+        @self.server.get_prompt()
+        async def handle_get_prompt(name: str, arguments: dict[str, str] | None) -> types.GetPromptResult:
+            """Devuelve el contenido de un prompt específico."""
+            args = arguments or {}
+
+            if name == "buscar_legislacion":
+                tema = args.get("tema", "")
+                departamento = args.get("departamento", "")
+                dept_hint = f" emitida por {departamento}" if departamento else ""
+                return types.GetPromptResult(
+                    description=f"Buscar legislación sobre: {tema}",
+                    messages=[
+                        types.PromptMessage(
+                            role="user",
+                            content=types.TextContent(
+                                type="text",
+                                text=(
+                                    f"Busca en la legislación consolidada del BOE información sobre '{tema}'{dept_hint}.\n\n"
+                                    "Por favor:\n"
+                                    "1. Usa `search_consolidated_legislation` para encontrar las normas relevantes.\n"
+                                    "2. Para las 2-3 más relevantes, usa `get_consolidated_law` para obtener sus metadatos y análisis.\n"
+                                    "3. Presenta un resumen claro con: título, fecha de publicación, estado de vigencia y enlace al BOE.\n"
+                                    "4. Indica si alguna norma ha sido modificada o derogada recientemente."
+                                ),
+                            ),
+                        )
+                    ],
+                )
+
+            elif name == "analizar_norma":
+                id_norma = args.get("id_norma", "")
+                return types.GetPromptResult(
+                    description=f"Análisis completo de {id_norma}",
+                    messages=[
+                        types.PromptMessage(
+                            role="user",
+                            content=types.TextContent(
+                                type="text",
+                                text=(
+                                    f"Analiza en profundidad la norma `{id_norma}` del BOE.\n\n"
+                                    "Sigue estos pasos:\n"
+                                    "1. Usa `get_consolidated_law` con `include_metadata=true` e `include_analysis=true`.\n"
+                                    "2. Usa `get_law_structure` para mostrar el índice de la norma.\n"
+                                    "3. Usa `find_related_laws` para identificar normas que la modifican o derogan.\n"
+                                    "4. Presenta un informe estructurado con: datos básicos, estado actual, "
+                                    "materias que regula, historial de modificaciones y estructura.\n"
+                                    "5. Señala si la consolidación está actualizada o si hay cambios pendientes."
+                                ),
+                            ),
+                        )
+                    ],
+                )
+
+            elif name == "resumen_boe_dia":
+                fecha = args.get("fecha", "")
+                seccion = args.get("seccion", "")
+                seccion_hint = f" de la sección {seccion}" if seccion else ""
+                return types.GetPromptResult(
+                    description=f"Resumen del BOE del {fecha}",
+                    messages=[
+                        types.PromptMessage(
+                            role="user",
+                            content=types.TextContent(
+                                type="text",
+                                text=(
+                                    f"Obtén y resume las publicaciones del BOE del día {fecha}{seccion_hint}.\n\n"
+                                    "Por favor:\n"
+                                    "1. Usa `get_boe_summary` para obtener el sumario completo.\n"
+                                    "2. Identifica las disposiciones más relevantes (especialmente de la Sección I).\n"
+                                    "3. Agrupa los documentos por departamento emisor.\n"
+                                    "4. Destaca leyes, reales decretos y resoluciones de especial importancia.\n"
+                                    "5. Proporciona los enlaces PDF de los documentos más destacados."
+                                ),
+                            ),
+                        )
+                    ],
+                )
+
+            elif name == "comparar_normas":
+                id1 = args.get("id_norma_1", "")
+                id2 = args.get("id_norma_2", "")
+                return types.GetPromptResult(
+                    description=f"Comparar {id1} y {id2}",
+                    messages=[
+                        types.PromptMessage(
+                            role="user",
+                            content=types.TextContent(
+                                type="text",
+                                text=(
+                                    f"Compara las normas `{id1}` y `{id2}` del BOE.\n\n"
+                                    "Sigue estos pasos:\n"
+                                    f"1. Usa `get_consolidated_law` para obtener los metadatos de `{id1}`.\n"
+                                    f"2. Usa `get_consolidated_law` para obtener los metadatos de `{id2}`.\n"
+                                    f"3. Usa `find_related_laws` en cada una para ver si existe relación directa entre ellas.\n"
+                                    "4. Elabora una tabla comparativa con: rango normativo, fecha, departamento, estado de vigencia.\n"
+                                    "5. Explica si una modifica, complementa o deroga a la otra, y en qué aspectos."
+                                ),
+                            ),
+                        )
+                    ],
+                )
+
+            else:
+                raise ValueError(f"Prompt desconocido: {name}")
 
         @self.server.list_resources()
         async def handle_list_resources() -> list[types.Resource]:
@@ -344,10 +473,11 @@ Obtiene la descripción de un código específico.
 
 def main():
     """Función principal del programa."""
-    logger.info("Iniciando MCP BOE Server v0.1.0")
-    
-    # Crear y ejecutar servidor
-    server = BOEMCPServer()
+    config = BOEMCPConfig()
+    config.configure_logging()
+    logger.info(f"Iniciando MCP BOE Server v0.1.0 (timeout: {config.http_timeout}s, retries: {config.max_retries})")
+
+    server = BOEMCPServerWithConfig(config)
     server.run()
 
 

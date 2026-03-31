@@ -80,7 +80,7 @@ class BOEHTTPClient:
         
     def _get_default_user_agent(self) -> str:
         """Genera un User-Agent por defecto."""
-        return "MCP-BOE/0.1.0 (https://github.com/tuusuario/mcp-boe)"
+        return "MCP-BOE/0.1.0 (https://github.com/ComputingVictor/MCP-BOE)"
 
     async def __aenter__(self):
         """Entrada del context manager."""
@@ -167,11 +167,17 @@ class BOEHTTPClient:
                     await asyncio.sleep(self.retry_delay * (attempt + 1))
                     
             except HTTPStatusError as e:
-                # Errores HTTP no se reintentan (4xx, 5xx)
-                logger.error(f"Error HTTP {e.response.status_code}: {e}")
+                status_code = e.response.status_code
+                # Reintentar en errores de servidor (5xx), no en errores de cliente (4xx)
+                if status_code >= 500 and attempt < self.max_retries:
+                    last_exception = e
+                    logger.warning(f"Error de servidor {status_code} en intento {attempt + 1}, reintentando...")
+                    await asyncio.sleep(self.retry_delay * (attempt + 1))
+                    continue
+                logger.error(f"Error HTTP {status_code}: {e}")
                 raise APIError(
-                    codigo=e.response.status_code,
-                    mensaje=f"Error HTTP {e.response.status_code}",
+                    codigo=status_code,
+                    mensaje=f"Error HTTP {status_code}",
                     detalles=str(e),
                     timestamp=datetime.now()
                 )
@@ -237,30 +243,36 @@ class BOEHTTPClient:
         Raises:
             APIError: Si hay error en el parseo
         """
-        try:
-            content = response.text
-            
-            if accept_format == "application/json":
+        content = response.text
+
+        if accept_format == "application/json":
+            try:
                 return json.loads(content)
-                
-            elif accept_format == "application/xml":
-                # Para XML, necesitaremos parsearlo con lxml
-                from lxml import etree
-                root = etree.fromstring(content.encode('utf-8'))
-                return self._xml_to_dict(root)
-                
-            else:
+            except json.JSONDecodeError as e:
                 raise APIError(
-                    codigo=400,
-                    mensaje=f"Formato no soportado: {accept_format}",
+                    codigo=500,
+                    mensaje="Error parseando respuesta JSON de la API",
+                    detalles=str(e),
                     timestamp=datetime.now()
                 )
-                
-        except (json.JSONDecodeError, etree.XMLSyntaxError) as e:
+
+        elif accept_format == "application/xml":
+            from lxml import etree
+            try:
+                root = etree.fromstring(content.encode('utf-8'))
+                return self._xml_to_dict(root)
+            except etree.XMLSyntaxError as e:
+                raise APIError(
+                    codigo=500,
+                    mensaje="Error parseando respuesta XML de la API",
+                    detalles=str(e),
+                    timestamp=datetime.now()
+                )
+
+        else:
             raise APIError(
-                codigo=500,
-                mensaje="Error parseando respuesta de la API",
-                detalles=str(e),
+                codigo=400,
+                mensaje=f"Formato no soportado: {accept_format}",
                 timestamp=datetime.now()
             )
 
