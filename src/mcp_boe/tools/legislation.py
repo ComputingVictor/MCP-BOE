@@ -241,32 +241,73 @@ class LegislationTools:
             )
 
             # Procesar resultados
-            if not response.get('data'):
-                return [TextContent(
-                    type="text",
-                    text="No se encontraron normas que coincidan con los criterios de búsqueda."
-                )]
-
-            results = response['data']
-            if not isinstance(results, list):
-                results = [results]
+            results = self._extract_results(response)
 
             # Filtrar normas derogadas si no se solicitan
             if not include_derogated:
                 results = [r for r in results if r.get('vigencia_agotada') != 'S' and r.get('estatus_derogacion') != 'S']
 
-            if not results:
-                return [TextContent(
-                    type="text",
-                    text="No se encontraron normas vigentes que coincidan con los criterios de búsqueda."
-                )]
+            fallback_note = ""
 
-            # Formatear resultados
+            # — Reintento automático —————————————————————————————————————
+            # Si no hay resultados y el usuario buscó por query (texto libre),
+            # volvemos a intentar con cada palabra suelta en lugar de la frase
+            # completa. Así "gases licuados del petróleo" también encuentra
+            # documentos que solo contienen "petróleo" o "gases licuados".
+            if not results and query and not title:
+                words = [w for w in query.split() if len(w) > 3]
+                if words:
+                    fallback_query = self.client.build_search_query(
+                        text=" OR ".join(words),
+                        department=department_code,
+                        legal_range=legal_range_code,
+                        matter=matter_code,
+                        date_from=from_date,
+                        date_to=to_date
+                    )
+                    logger.info(f"Sin resultados exactos, reintentando con términos sueltos: {words}")
+                    fb_response = await self.client.search_legislation(
+                        query=fallback_query,
+                        from_date=from_date,
+                        to_date=to_date,
+                        offset=offset,
+                        limit=limit
+                    )
+                    results = self._extract_results(fb_response)
+                    if not include_derogated:
+                        results = [r for r in results if r.get('vigencia_agotada') != 'S' and r.get('estatus_derogacion') != 'S']
+                    if results:
+                        fallback_note = (
+                            f"> ⚠️ **No se encontraron resultados exactos para «{query}».**\n"
+                            f"> La búsqueda se amplió usando los términos sueltos: "
+                            f"{', '.join(f'`{w}`' for w in words)}.\n"
+                            f"> Si los resultados no son los esperados, prueba con la denominación "
+                            f"técnica oficial (p. ej. «gases licuados del petróleo» en vez de «gasolina»).\n\n"
+                        )
+
+            if not results:
+                # Construir sugerencias útiles basadas en lo que se buscó
+                sugerencias = []
+                if query:
+                    palabras = [w for w in query.split() if len(w) > 3]
+                    if len(palabras) > 1:
+                        sugerencias.append(f"- Prueba con una sola palabra clave: `{palabras[0]}`")
+                    sugerencias.append("- Usa la denominación técnica oficial en lugar de sinónimos comunes")
+                    sugerencias.append("- Busca por título exacto con el parámetro `title`")
+                if not include_derogated:
+                    sugerencias.append("- Activa `include_derogated: true` para incluir normas derogadas")
+                sugerencias.append("- Consulta `get_matters_table` o `get_legal_ranges_table` para encontrar los códigos de filtro correctos")
+
+                msg = f"No se encontraron normas para «{query or title}»."
+                if sugerencias:
+                    msg += "\n\n**Sugerencias:**\n" + "\n".join(sugerencias)
+                return [TextContent(type="text", text=msg)]
+
             formatted_results = self._format_search_results(results, limit)
-            
+
             return [TextContent(
                 type="text",
-                text=formatted_results
+                text=fallback_note + formatted_results
             )]
 
         except APIError as e:
@@ -281,6 +322,15 @@ class LegislationTools:
                 type="text", 
                 text=f"Error interno: {str(e)}"
             )]
+
+    def _extract_results(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extrae la lista de resultados de una respuesta de la API."""
+        if not response.get('data'):
+            return []
+        results = response['data']
+        if not isinstance(results, list):
+            results = [results]
+        return results
 
     def _format_search_results(self, results: List[Dict[str, Any]], limit: int) -> str:
         """Formatea los resultados de búsqueda para mostrar al usuario."""

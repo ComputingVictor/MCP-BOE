@@ -478,10 +478,14 @@ class BOEHTTPClient:
             Query JSON para la API
         """
         query_parts = []
-        
+
         if text:
-            query_parts.append(f'texto:"{text}"')
+            # Busca en título Y texto completo. Cada término va entre paréntesis
+            # para que el OR tenga precedencia correcta con el AND del resto de filtros.
+            terms = text.strip()
+            query_parts.append(f'(titulo:({terms}) OR texto:({terms}))')
         if title:
+            # Búsqueda específica en título: usamos comillas para frase exacta
             query_parts.append(f'titulo:"{title}"')
         if department:
             query_parts.append(f'departamento@codigo:{department}')
@@ -489,7 +493,7 @@ class BOEHTTPClient:
             query_parts.append(f'rango@codigo:{legal_range}')
         if matter:
             query_parts.append(f'materia@codigo:{matter}')
-            
+
         query_string = " AND ".join(query_parts) if query_parts else ""
         
         query_json = {
