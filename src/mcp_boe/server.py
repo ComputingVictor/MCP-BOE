@@ -19,6 +19,7 @@ from .utils.http_client import BOEHTTPClient
 from .tools.legislation import LegislationTools
 from .tools.summaries import SummaryTools
 from .tools.auxiliary import AuxiliaryTools
+from .tools.documents import DocumentTools
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,7 @@ class BOEMCPServer:
         self.legislation_tools = None
         self.summary_tools = None
         self.auxiliary_tools = None
+        self.document_tools = DocumentTools()
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -53,7 +55,9 @@ class BOEMCPServer:
             
             if self.auxiliary_tools:
                 tools.extend(self.auxiliary_tools.get_tools())
-            
+
+            tools.extend(self.document_tools.get_tools())
+
             logger.info(f"Listando {len(tools)} herramientas disponibles")
             return tools
 
@@ -88,6 +92,8 @@ class BOEMCPServer:
                 "get_consolidation_states_table":  lambda a: self.auxiliary_tools.get_consolidation_states_table(a),
                 "search_auxiliary_data":           lambda a: self.auxiliary_tools.search_auxiliary_data(a),
                 "get_code_description":            lambda a: self.auxiliary_tools.get_code_description(a),
+                # Documentos PDF
+                "read_boe_pdf":                    lambda a: self.document_tools.read_boe_pdf(a),
             }
 
             handler = dispatch.get(name)
@@ -479,10 +485,6 @@ def main():
 
     server = BOEMCPServerWithConfig(config)
     server.run()
-
-
-if __name__ == "__main__":
-    main()
 
 
 # ============================================================================

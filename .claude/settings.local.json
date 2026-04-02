@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(uv --version)",
+      "Bash(/Users/computingvictor/miniforge3/bin/uv python:*)",
+      "Bash(/Users/computingvictor/miniforge3/bin/uv run:*)",
+      "Bash(curl -s \"https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/BOE-A-2015-10566/metadatos\" -H \"Accept: application/json\")"
     ],
     "deny": [],
     "ask": []

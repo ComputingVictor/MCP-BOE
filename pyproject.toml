@@ -11,7 +11,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 keywords = ["mcp", "boe", "legislation", "spain", "legal", "api"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -45,6 +45,9 @@ dependencies = [
     # XML parsing (for BOE responses)
     "lxml>=4.9.0",
     
+    # PDF parsing
+    "pypdf>=4.0.0",
+
     # Async support
     "anyio>=3.6.0",
 ]

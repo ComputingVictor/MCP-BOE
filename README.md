@@ -4,123 +4,113 @@
 
 <img width="512" height="512" alt="image" src="https://github.com/user-attachments/assets/cd1c5e79-add7-466c-bcbd-554b81a2fef9" />
 
-
 Un servidor MCP que permite a Claude y otros LLMs acceder a la API oficial del BOE para consultar legislación consolidada, sumarios diarios y tablas auxiliares del gobierno español.
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green.svg)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-orange.svg)](https://modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 🚀 Características
 
-- **🔍 Búsqueda de Legislación**: Buscar en más de 50,000 normas consolidadas
-- **📰 Sumarios del BOE**: Acceder a publicaciones diarias del BOE y BORME  
-- **🏛️ Tablas Auxiliares**: Consultar códigos de departamentos, materias y rangos normativos
-- **⚡ API REST**: Interfaz HTTP para usar desde cualquier aplicación
-- **🤖 Compatible con MCP**: Funciona con Claude Code, Ollama y otros clientes MCP
+- **🔍 Búsqueda de Legislación**: Buscar en más de 50.000 normas consolidadas con filtros por departamento, rango normativo, materia y fechas
+- **📰 Sumarios del BOE/BORME**: Acceder a publicaciones diarias, búsquedas recientes y resúmenes semanales
+- **🏛️ Tablas Auxiliares**: Consultar códigos de departamentos, materias, rangos normativos y ámbitos
+- **📄 Lectura de PDFs**: Descargar y extraer el texto de cualquier documento del BOE para analizarlo
+- **💬 Prompts integrados**: Plantillas de consulta listas para usar en Claude
 - **📊 Datos Oficiales**: Conecta directamente con la API oficial del BOE
+- **⚙️ Configurable**: Timeout, reintentos y nivel de log via variables de entorno
 
 ## 📋 Tabla de Contenidos
 
 - [Instalación](#-instalación)
-- [Uso Rápido](#-uso-rápido)
-- [Configuración con Claude](#-configuración-con-claude)
-- [API REST](#-api-rest)
-- [Ejemplos](#-ejemplos)
-- [Herramientas Disponibles](#-herramientas-disponibles)
-- [Contribuir](#-contribuir)
-- [Licencia](#-licencia)
+- [Configuración con Claude Desktop](#-configuración-con-claude-desktop)
+- [Configuración con Claude Code](#-configuración-con-claude-code)
+- [Prompts disponibles](#-prompts-disponibles)
+- [Herramientas disponibles](#-herramientas-disponibles)
+- [Lectura de PDFs](#-lectura-de-pdfs)
+- [Variables de entorno](#-variables-de-entorno)
+- [Ejemplos de uso](#-ejemplos-de-uso)
+- [Solución de problemas](#-solución-de-problemas)
+- [Estructura del proyecto](#-estructura-del-proyecto)
 
 ## 🛠️ Instalación
 
 ### Prerrequisitos
 
-- Python 3.8 o superior
-- pip (gestor de paquetes de Python)
+- Python **3.10 o superior** (requerido por la librería `mcp`)
+- [uv](https://docs.astral.sh/uv/) (recomendado) o pip
 
-### Instalación rápida con uvx (Recomendado)
+### Opción 1: uvx — sin instalación (Recomendado)
 
-Si tienes [uvx](https://docs.astral.sh/uv/guides/tools/) instalado, puedes usar directamente el MCP servidor sin instalación manual:
+Con [uvx](https://docs.astral.sh/uv/guides/tools/) no necesitas clonar el repositorio ni gestionar dependencias:
 
 ```bash
-# Verificar que uvx está instalado
-uvx --version
-
-# Ejecutar directamente desde el repositorio
-uvx --from git+https://github.com/ComputingVictor/MCP-BOE.git mcp-boe --help
+uvx --from git+https://github.com/ComputingVictor/MCP-BOE.git mcp-boe
 ```
 
-### Instalación desde el código fuente
+### Opción 2: Desde el código fuente con uv
 
 ```bash
-# Clonar el repositorio
 git clone https://github.com/ComputingVictor/MCP-BOE.git
 cd MCP-BOE
 
-# Instalar solo las dependencias básicas
+# Instalar dependencias y ejecutar
+uv run python -m mcp_boe.server
+```
+
+### Opción 3: Instalación con pip
+
+```bash
+git clone https://github.com/ComputingVictor/MCP-BOE.git
+cd MCP-BOE
 pip install -e .
-
-# O instalar con API REST
-pip install -e ".[api]"
-
-# O instalar todo para desarrollo
-pip install -e ".[dev]"
 ```
 
-### Verificar instalación
+## 🖥️ Configuración con Claude Desktop
 
-```bash
-# Prueba rápida de conectividad
-python examples/basic_usage.py connectivity
+Edita el archivo de configuración de Claude Desktop:
 
-# Prueba completa de funcionalidades
-python examples/basic_usage.py quick
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+### Con uv (Recomendado)
+
+```json
+{
+  "mcpServers": {
+    "mcp-boe": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--python", "3.12",
+        "--project", "/ruta/absoluta/a/MCP-BOE",
+        "python", "-m", "mcp_boe.server"
+      ]
+    }
+  }
+}
 ```
 
-## ⚡ Uso Rápido
+> Sustituye `/ruta/absoluta/a/MCP-BOE` por la ruta real donde clonaste el repositorio.
 
-### Prueba de Conectividad
+### Con uvx
 
-```bash
-# Verificar que todo funciona
-python examples/basic_usage.py connectivity
+```json
+{
+  "mcpServers": {
+    "mcp-boe": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/ComputingVictor/MCP-BOE.git", "mcp-boe"]
+    }
+  }
+}
 ```
 
-### Demo Interactivo
+Reinicia Claude Desktop tras guardar los cambios.
 
-```bash
-# Explorar funcionalidades de forma interactiva
-python examples/basic_usage.py interactive
-```
+## ⚡ Configuración con Claude Code
 
-### Ejemplos Específicos
-
-```bash
-# Buscar legislación
-python examples/basic_usage.py search
-
-# Ver sumarios del BOE
-python examples/basic_usage.py summary
-
-# Consultar departamentos
-python examples/basic_usage.py departments
-```
-
-## 🔧 Configuración con Claude
-
-### Claude Code (Recomendado)
-
-#### Opción 1: Con uvx (Recomendado para simplicidad)
-
-**uvx** es una herramienta que simplifica enormemente la instalación y ejecución de paquetes Python. Con uvx no necesitas:
-- Crear entornos virtuales manualmente
-- Instalar dependencias
-- Configurar variables de entorno como PYTHONPATH
-
-uvx se encarga automáticamente de crear un entorno aislado y descargar todas las dependencias necesarias.
-
-1. **Usar uvx directamente**:
+### Con uvx
 
 ```json
 {
@@ -134,294 +124,339 @@ uvx se encarga automáticamente de crear un entorno aislado y descargar todas la
 }
 ```
 
-También puedes usar el archivo de configuración de ejemplo incluido:
+También puedes usar el archivo incluido en el repositorio:
+
 ```bash
-# Descargar y usar la configuración de ejemplo
-curl -O https://raw.githubusercontent.com/ComputingVictor/MCP-BOE/main/claude_mcp_config_uvx.json
+# Desde el directorio del proyecto
+claude --mcp-config claude_mcp_config_uvx.json
 ```
 
-2. **Configurar en Claude Code**:
-```bash
-# Usar configuración personalizada
-/config-mcp /ruta/a/tu/claude_mcp_config.json
+## 💬 Prompts disponibles
 
-# O usar configuración de ejemplo
-/config-mcp claude_mcp_config_uvx.json
+El servidor incluye 4 prompts integrados accesibles desde el selector de prompts de Claude:
+
+### `buscar_legislacion`
+Busca y resume normas del BOE.
+
+| Argumento | Descripción | Requerido |
+|-----------|-------------|-----------|
+| `tema` | Texto o nombre de la norma a buscar | ✅ |
+| `departamento` | Ministerio u organismo emisor | ❌ |
+
+**Ejemplos:**
+- tema: `protección de datos` → encuentra RGPD y LOPDGDD
+- tema: `Ley 40/2015` → Ley de Régimen Jurídico del Sector Público
+- tema: `tráfico`, departamento: `Ministerio del Interior`
+
+---
+
+### `analizar_norma`
+Análisis completo de una norma: metadatos, estado de vigencia, estructura y relaciones con otras normas.
+
+| Argumento | Descripción | Requerido |
+|-----------|-------------|-----------|
+| `id_norma` | Identificador BOE (ej: `BOE-A-2015-10566`) | ✅ |
+
+**Ejemplos:**
+- `BOE-A-1978-31229` → Constitución Española
+- `BOE-A-2015-10566` → Ley 40/2015 de Régimen Jurídico del Sector Público
+- `BOE-A-2018-16673` → Ley Orgánica de Protección de Datos
+
+---
+
+### `resumen_boe_dia`
+Resumen de las publicaciones más relevantes del BOE de una fecha concreta.
+
+| Argumento | Descripción | Requerido |
+|-----------|-------------|-----------|
+| `fecha` | Fecha en formato AAAAMMDD | ✅ |
+| `seccion` | Sección del BOE: `1`, `2A`, `2B`, `3`, `4`, `5` | ❌ |
+
+**Ejemplos:**
+- fecha: `20250101` → publicaciones del 1 de enero de 2025
+- fecha: `20240529`, seccion: `1` → solo disposiciones generales
+
+---
+
+### `comparar_normas`
+Compara dos normas e identifica relaciones de modificación o derogación entre ellas.
+
+| Argumento | Descripción | Requerido |
+|-----------|-------------|-----------|
+| `id_norma_1` | Identificador de la primera norma | ✅ |
+| `id_norma_2` | Identificador de la segunda norma | ✅ |
+
+**Ejemplo:**
+- `BOE-A-2015-10566` y `BOE-A-2015-10565` → Ley 40/2015 y Ley 39/2015 (las dos grandes leyes administrativas)
+
+## 🔧 Herramientas disponibles
+
+### 📜 Legislación Consolidada (5 herramientas)
+
+| Herramienta | Descripción | Parámetros clave |
+|-------------|-------------|------------------|
+| `search_consolidated_legislation` | Busca en más de 50.000 normas consolidadas | `query`, `title`, `department_code`, `legal_range_code`, `matter_code`, `from_date`, `to_date`, `limit`, `include_derogated` |
+| `get_consolidated_law` | Obtiene metadatos, análisis jurídico y texto de una norma | `law_id`, `include_metadata`, `include_analysis`, `include_full_text`, `include_eli_metadata` |
+| `get_law_structure` | Índice completo de una norma (artículos, disposiciones, anexos) | `law_id` |
+| `get_law_text_block` | Texto de un artículo o disposición específica | `law_id`, `block_id` |
+| `find_related_laws` | Normas que modifican, derogan o son modificadas por una norma | `law_id`, `relation_type` |
+
+### 📰 Sumarios BOE/BORME (4 herramientas)
+
+| Herramienta | Descripción | Parámetros clave |
+|-------------|-------------|------------------|
+| `get_boe_summary` | Sumario completo del BOE para una fecha | `date`, `section_filter`, `department_filter`, `max_items` |
+| `get_borme_summary` | Sumario del BORME (Registro Mercantil) | `date`, `province_filter`, `max_items` |
+| `search_recent_boe` | Busca documentos en los últimos N días | `days_back`, `search_terms`, `section_filter` |
+| `get_weekly_summary` | Estadísticas y resumen de una semana completa | `start_date`, `include_statistics` |
+
+### 🏛️ Tablas Auxiliares (7 herramientas)
+
+| Herramienta | Descripción |
+|-------------|-------------|
+| `get_departments_table` | Lista de departamentos oficiales con sus códigos |
+| `get_legal_ranges_table` | Rangos normativos (Ley, Real Decreto, Orden, etc.) |
+| `get_matters_table` | Vocabulario controlado de materias temáticas |
+| `get_scopes_table` | Ámbitos normativos (estatal, autonómico) |
+| `get_consolidation_states_table` | Estados de consolidación |
+| `search_auxiliary_data` | Búsqueda en todas las tablas a la vez |
+| `get_code_description` | Descripción de un código específico |
+
+### 📄 Lectura de PDFs (1 herramienta)
+
+| Herramienta | Descripción | Parámetros clave |
+|-------------|-------------|------------------|
+| `read_boe_pdf` | Descarga y extrae el texto de un PDF del BOE | `source`, `max_pages` |
+
+**`source`** acepta dos formatos:
+- **URL directa**: la que aparece en el campo `url_pdf` de los sumarios  
+  `https://www.boe.es/boe/dias/2025/03/28/pdfs/BOE-A-2025-6192.pdf`
+- **Identificador BOE**: el servidor consulta la API para obtener la fecha y construye la URL  
+  `BOE-A-2025-6192` o `BOE-A-2015-10566`
+
+**`max_pages`** — páginas máximas a leer (por defecto `30`, máximo `100`).
+
+Límites aplicados: PDFs de hasta **10 MB** y **80.000 caracteres** de texto devuelto al LLM.
+
+**Ejemplos de uso en Claude:**
+
+```
+Lee el PDF de BOE-A-2015-10566 y explícame qué regula la Ley 40/2015
+```
+```
+Descarga https://www.boe.es/boe/dias/2025/03/28/pdfs/BOE-A-2025-6192.pdf y resume su contenido
+```
+```
+Busca el sumario del BOE de hoy y léeme el PDF del primer real decreto que aparezca
 ```
 
-#### Opción 2: Instalación tradicional
+### 📌 Formatos y valores útiles
 
-1. **Crear archivo de configuración MCP**:
+**Secciones del BOE:**
+| Código | Descripción |
+|--------|-------------|
+| `1` | Disposiciones generales |
+| `2A` | Autoridades y personal — Nombramientos |
+| `2B` | Autoridades y personal — Oposiciones |
+| `3` | Otras disposiciones |
+| `4` | Administración de Justicia |
+| `5` | Anuncios |
+
+**Departamentos frecuentes:**
+| Código | Departamento |
+|--------|-------------|
+| `7723` | Jefatura del Estado |
+| `1430` | Ministerio de Justicia |
+| `1470` | Ministerio del Interior |
+
+**Rangos normativos frecuentes:**
+| Código | Rango |
+|--------|-------|
+| `1300` | Ley |
+| `1250` | Ley Orgánica |
+| `1200` | Real Decreto |
+| `1100` | Real Decreto-ley |
+| `800` | Orden ministerial |
+
+## ⚙️ Variables de entorno
+
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|-------------------|
+| `BOE_HTTP_TIMEOUT` | Timeout en segundos para peticiones HTTP | `30.0` |
+| `BOE_MAX_RETRIES` | Número máximo de reintentos ante errores de red o 5xx | `3` |
+| `BOE_RETRY_DELAY` | Segundos de espera base entre reintentos (backoff lineal) | `1.0` |
+| `LOG_LEVEL` | Nivel de logging (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
+
+Ejemplo de configuración en Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "mcp-boe": {
-      "command": "/ruta/a/tu/conda/envs/tu_env/bin/python",
-      "args": ["-m", "mcp_boe.server"],
-      "transport": "stdio",
+      "command": "uv",
+      "args": ["run", "--project", "/ruta/a/MCP-BOE", "python", "-m", "mcp_boe.server"],
       "env": {
-        "PYTHONPATH": "/ruta/a/tu/MCP-BOE/src"
+        "BOE_HTTP_TIMEOUT": "60",
+        "LOG_LEVEL": "WARNING"
       }
     }
   }
 }
 ```
 
-2. **Configurar en Claude Code**:
-```
-/config-mcp /ruta/a/tu/claude_mcp_config.json
-```
+## 💡 Ejemplos de uso
 
-3. **Usar en Claude**:
-```
-¿Puedes buscar información sobre la Ley 40/2015?
-Muéstrame el sumario del BOE de esta semana
-¿Qué departamentos contienen la palabra "Ministerio"?
-```
-
-### Ollama + Open WebUI
-
-```bash
-# Instalar Open WebUI
-pip install open-webui
-
-# Configurar variables de entorno
-export PYTHONPATH=/ruta/a/tu/MCP-BOE/src
-
-# Iniciar servicios
-ollama serve &
-open-webui serve
-```
-
-## 🌐 API REST
-
-Para usar desde aplicaciones web, móviles o cualquier cliente HTTP:
-
-### Iniciar el servidor API
-
-```bash
-python rest_api_wrapper.py
-```
-
-La API estará disponible en: `http://localhost:8000`
-Documentación interactiva: `http://localhost:8000/docs`
-
-### Endpoints Disponibles
-
-#### 🔍 Buscar Legislación
-```bash
-curl -X POST "http://localhost:8000/search/legislation" \
--H "Content-Type: application/json" \
--d '{"query": "Constitución Española", "limit": 5}'
-```
-
-#### 📰 Sumario del BOE
-```bash
-curl -X POST "http://localhost:8000/summary/boe" \
--H "Content-Type: application/json" \
--d '{"max_items": 10}'
-```
-
-#### 🏛️ Buscar Departamentos  
-```bash
-curl -X POST "http://localhost:8000/auxiliary/departments" \
--H "Content-Type: application/json" \
--d '{"search_term": "Ministerio", "limit": 10}'
-```
-
-#### 🔢 Descripción de Código
-```bash
-curl "http://localhost:8000/auxiliary/code/7723"
-```
-
-## 💡 Ejemplos
-
-### Búsqueda de Legislación
+### Buscar legislación desde Python
 
 ```python
-from mcp_boe import BOEHTTPClient
+import asyncio
+from mcp_boe.utils.http_client import BOEHTTPClient
 from mcp_boe.tools.legislation import LegislationTools
 
-async def buscar_ley():
+async def main():
     async with BOEHTTPClient() as client:
         tools = LegislationTools(client)
-        
-        # Buscar Ley 40/2015
         resultados = await tools.search_consolidated_legislation({
             "query": "Ley 40/2015",
             "limit": 3
         })
-        
-        for resultado in resultados:
-            print(resultado.text)
+        for r in resultados:
+            print(r.text)
+
+asyncio.run(main())
 ```
 
-### Obtener Sumario del BOE
+### Obtener sumario del BOE
 
 ```python
-from mcp_boe.tools.summaries import SummaryTools
+import asyncio
 from datetime import datetime, timedelta
+from mcp_boe.utils.http_client import BOEHTTPClient
+from mcp_boe.tools.summaries import SummaryTools
 
-async def sumario_boe():
+async def main():
     async with BOEHTTPClient() as client:
         tools = SummaryTools(client)
-        
-        # Sumario de hace 3 días
-        fecha = (datetime.now() - timedelta(days=3)).strftime("%Y%m%d")
-        
+        fecha = (datetime.now() - timedelta(days=2)).strftime("%Y%m%d")
         resultados = await tools.get_boe_summary({
             "date": fecha,
-            "max_items": 5
+            "section_filter": "1",
+            "max_items": 10
         })
-        
-        for resultado in resultados:
-            print(resultado.text)
+        for r in resultados:
+            print(r.text)
+
+asyncio.run(main())
 ```
 
-### Consultar Departamentos
-
-```python
-from mcp_boe.tools.auxiliary import AuxiliaryTools
-
-async def buscar_departamentos():
-    async with BOEHTTPClient() as client:
-        tools = AuxiliaryTools(client)
-        
-        # Buscar ministerios
-        resultados = await tools.get_departments_table({
-            "search_term": "Ministerio",
-            "limit": 10
-        })
-        
-        for resultado in resultados:
-            print(resultado.text)
-```
-
-## 🔧 Herramientas Disponibles
-
-### 📜 Legislación Consolidada
-
-| Herramienta | Descripción | Parámetros |
-|-------------|-------------|------------|
-| `search_consolidated_legislation` | Buscar en legislación consolidada | `query`, `limit`, `offset` |
-| `get_consolidated_law` | Obtener norma específica | `law_id`, `include_metadata`, `include_analysis`, `include_full_text` |
-| `get_law_structure` | Ver estructura de una norma | `law_id` |
-
-### 📰 Sumarios BOE/BORME
-
-| Herramienta | Descripción | Parámetros |
-|-------------|-------------|------------|
-| `get_boe_summary` | Sumario del BOE por fecha | `date`, `max_items` |
-| `get_borme_summary` | Sumario del BORME por fecha | `date`, `max_items` |
-| `search_recent_boe` | Buscar en BOE reciente | `days_back`, `search_terms` |
-
-### 🏛️ Tablas Auxiliares
-
-| Herramienta | Descripción | Parámetros |
-|-------------|-------------|------------|
-| `get_departments_table` | Códigos de departamentos | `search_term`, `limit` |
-| `get_legal_ranges_table` | Rangos normativos | `limit` |
-| `get_code_description` | Descripción de código específico | `code` |
-| `search_auxiliary_data` | Buscar en todas las tablas | `query` |
-
-## 🧪 Testing
+### Diagnóstico de conectividad
 
 ```bash
-# Todas las pruebas
-python examples/basic_usage.py all
+# Verificar que la API del BOE es accesible
+python -m mcp_boe.server --mode diagnose
+```
 
-# Prueba rápida
-python examples/basic_usage.py quick
+## 🐛 Solución de problemas
 
-# Prueba específica
-python examples/basic_usage.py search
-python examples/basic_usage.py summary
-python examples/basic_usage.py departments
+### El servidor no aparece en Claude Desktop
+
+1. Verifica que Python 3.10+ está disponible: `python3 --version`
+2. Comprueba la ruta en el config: debe ser absoluta, no relativa
+3. Reinicia completamente Claude Desktop (no solo la ventana)
+4. Revisa los logs en Claude Desktop → Ayuda → Abrir carpeta de logs
+
+### Error: `requires-python` / incompatibilidad de versión
+
+La librería `mcp` requiere Python 3.10 o superior. Fuerza la versión con `uv`:
+
+```json
+"args": ["run", "--python", "3.12", "--project", "/ruta/MCP-BOE", "python", "-m", "mcp_boe.server"]
+```
+
+### Error: `No module named 'mcp_boe'`
+
+Asegúrate de pasar `--project` al directorio raíz del repositorio (donde está `pyproject.toml`), no al directorio `src/`.
+
+### La API del BOE no responde
+
+```bash
+python -m mcp_boe.server --mode diagnose
+```
+
+La API del BOE no publica horarios de mantenimiento. Los errores 5xx se reintentan automáticamente hasta 3 veces.
+
+## 📊 Estructura del proyecto
+
+```
+MCP-BOE/
+├── src/mcp_boe/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── server.py               # Servidor MCP: tools, prompts, resources
+│   ├── models/
+│   │   └── boe_models.py       # Modelos Pydantic y validadores
+│   ├── tools/
+│   │   ├── legislation.py      # 5 herramientas de legislación consolidada
+│   │   ├── summaries.py        # 4 herramientas de sumarios BOE/BORME
+│   │   ├── auxiliary.py        # 7 herramientas de tablas auxiliares
+│   │   └── documents.py        # 1 herramienta de lectura de PDFs
+│   └── utils/
+│       └── http_client.py      # Cliente HTTP asíncrono con reintentos
+├── examples/
+│   └── basic_usage.py
+├── tests/
+├── pyproject.toml
+├── claude_mcp_config.json      # Config de ejemplo para instalación local
+├── claude_mcp_config_uvx.json  # Config de ejemplo con uvx
+└── rest_api_wrapper.py         # API REST opcional (FastAPI)
 ```
 
 ## 🤝 Contribuir
 
 1. Fork del proyecto
-2. Crear rama para nueva funcionalidad (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit de cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+2. Crea una rama (`git checkout -b feature/nueva-funcionalidad`)
+3. Haz commit de los cambios (`git commit -m 'Agregar nueva funcionalidad'`)
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crear Pull Request
+5. Abre un Pull Request
 
-### Desarrollo Local
+### Desarrollo local
 
 ```bash
-# Configurar entorno de desarrollo
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-pip install -e .
-
-# Ejecutar tests
-python -m pytest tests/
-
-# Linting
-python -m black src/
-python -m flake8 src/
+git clone https://github.com/ComputingVictor/MCP-BOE.git
+cd MCP-BOE
+uv sync --extra dev
+uv run python -m pytest tests/
+uv run black src/
 ```
-
-## 📊 Estructura del Proyecto
-
-```
-MCP-BOE/
-├── src/mcp_boe/           # Código fuente principal
-│   ├── models/            # Modelos Pydantic
-│   ├── tools/            # Herramientas MCP
-│   ├── utils/            # Utilidades (cliente HTTP)
-│   └── server.py         # Servidor MCP principal
-├── examples/             # Ejemplos de uso
-├── tests/               # Pruebas unitarias
-├── pyproject.toml       # Configuración del proyecto y dependencias
-├── rest_api_wrapper.py  # API REST opcional
-└── README.md           # Este archivo
-```
-
-## 🔒 Seguridad
-
-- **Sin autenticación requerida**: La API del BOE es pública
-- **Rate limiting**: Respeta los límites de la API oficial
-- **Datos oficiales**: Toda la información proviene directamente del BOE
-- **Sin almacenamiento**: No se almacenan datos localmente
-
-## 📚 Documentación Adicional
-
-- [API Oficial del BOE](https://www.boe.es/datosabiertos/documentos/Manual_API.pdf)
-- [Model Context Protocol](https://modelcontextprotocol.io)
-- [Claude Code Documentation](https://docs.anthropic.com/claude/docs)
-
-## 🐛 Solución de Problemas
-
-### Error: "No module named 'mcp_boe'"
-```bash
-export PYTHONPATH="${PYTHONPATH}:/ruta/a/tu/MCP-BOE/src"
-```
-
-### Error: "Connection refused"
-Verificar conectividad con la API del BOE:
-```bash
-python examples/basic_usage.py connectivity
-```
-
-### Error: Pydantic v2 warnings
-Las advertencias de Pydantic v2 son normales y no afectan la funcionalidad.
 
 ## 📝 Changelog
 
-### v0.1.0 (2025-08-23)
-- ✅ Implementación inicial del servidor MCP
-- ✅ Soporte para legislación consolidada
-- ✅ Sumarios del BOE y BORME  
-- ✅ Tablas auxiliares
-- ✅ API REST wrapper
-- ✅ Ejemplos y documentación
+### v0.1.0
+
+- Implementación inicial del servidor MCP
+- **17 herramientas**: 5 de legislación, 4 de sumarios, 7 de tablas auxiliares, 1 de lectura de PDFs
+- Herramienta `read_boe_pdf`: descarga y extrae texto de PDFs del BOE por URL o por ID de norma
+- 4 prompts integrados: `buscar_legislacion`, `analizar_norma`, `resumen_boe_dia`, `comparar_normas`
+- 2 recursos MCP: `boe://help` y `boe://status`
+- Cliente HTTP asíncrono con reintentos en errores de red y 5xx
+- Configurable via variables de entorno
+- Soporte para Python 3.10+
+
+## 🔒 Seguridad
+
+- La API del BOE es pública y no requiere autenticación
+- No se almacenan datos localmente
+- El servidor respeta automáticamente los límites de la API mediante reintentos con backoff
+
+## 📚 Referencias
+
+- [API Oficial del BOE](https://www.boe.es/datosabiertos/documentos/Manual_API.pdf)
+- [Model Context Protocol](https://modelcontextprotocol.io)
+- [Documentación de Claude](https://docs.anthropic.com/claude/docs)
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+MIT — ver [LICENSE](LICENSE) para más detalles.
 
 ## 👤 Autor
 
@@ -429,14 +464,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 - Email: vvictor.97@gmail.com
 - GitHub: [@ComputingVictor](https://github.com/ComputingVictor)
 
-## 🙏 Agradecimientos
-
-- Al **Boletín Oficial del Estado** por proporcionar una API pública
-- Al equipo de **Anthropic** por el protocolo MCP
-- A la comunidad **Python** por las excelentes librerías
-
 ---
 
-**¿Tienes preguntas?** Abre un [issue](https://github.com/ComputingVictor/MCP-BOE/issues) o envía un [pull request](https://github.com/ComputingVictor/MCP-BOE/pulls).
-
+**¿Tienes preguntas?** Abre un [issue](https://github.com/ComputingVictor/MCP-BOE/issues).  
 **¿Te gusta el proyecto?** ¡Dale una ⭐ en GitHub!
