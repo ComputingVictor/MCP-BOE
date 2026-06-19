@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/computingvictor-mcp-boe-badge.png)](https://mseep.ai/app/computingvictor-mcp-boe)
+
 # MCP BOE 🇪🇸
 
 **Model Context Protocol para el Boletín Oficial del Estado español**
