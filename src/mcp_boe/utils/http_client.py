@@ -419,8 +419,14 @@ class BOEHTTPClient:
             bloque_id = bloque_el.get("id", "")
             bloque_tipo = bloque_el.get("tipo", "")
 
-            titulo_el = bloque_el.find("titulo")
-            titulo = titulo_el.text.strip() if titulo_el is not None and titulo_el.text else ""
+            # En el XML del BOE el título es un ATRIBUTO del bloque
+            # (<bloque id="a194" tipo="precepto" titulo="Artículo 194">), no un
+            # hijo: buscarlo con find() devolvía siempre None y los títulos
+            # salían vacíos en la búsqueda y en la comparación de versiones.
+            titulo = (bloque_el.get("titulo") or "").strip()
+            if not titulo:
+                titulo_el = bloque_el.find("titulo")
+                titulo = titulo_el.text.strip() if titulo_el is not None and titulo_el.text else ""
 
             versiones = []
             for ver_el in bloque_el.findall("version"):
@@ -438,6 +444,16 @@ class BOEHTTPClient:
                     "fecha_vigencia": ver_el.get("fecha_vigencia", ""),
                     "contenido_html": contenido_html,
                 })
+
+            # El BOE emite las versiones de más antigua a más reciente, pero los
+            # consumidores que no filtran por fecha (search_law_articles) leen
+            # versiones[0]. Sin este orden buscarían sobre el texto ORIGINAL y
+            # ya derogado. compare_law_versions no se ve afectado: elige versión
+            # por fecha con _get_active_version, que ordena por su cuenta.
+            versiones.sort(
+                key=lambda v: v.get("fecha_vigencia") or v.get("fecha_publicacion") or "",
+                reverse=True,
+            )
 
             bloques.append({
                 "id": bloque_id,
