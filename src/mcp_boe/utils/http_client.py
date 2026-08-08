@@ -379,9 +379,11 @@ class BOEHTTPClient:
         if section:
             endpoint += f"/{section}"
 
-        # /texto solo funciona con XML; el resto responde JSON
+        # /texto y /texto/bloque/<id> solo funcionan con XML; el resto responde JSON
         if section == 'texto':
             return await self._get_law_texto(endpoint)
+        if section and section.startswith('texto/bloque/'):
+            return await self._get_law_bloque(endpoint)
 
         response = await self.get(endpoint=endpoint)
 
@@ -447,6 +449,63 @@ class BOEHTTPClient:
             })
 
         return {"data": {"texto": bloques}}
+
+    async def _get_law_bloque(self, endpoint: str) -> Dict[str, Any]:
+        """Obtiene un bloque suelto (/texto/bloque/<id>) desde XML.
+
+        Igual que /texto, este endpoint rechaza application/json con
+        "No soportado ningún mime type de la cabecera Accept". Se normaliza al
+        formato que espera _format_text_block: data.bloque{titulo, tipo, version[]}.
+
+        Las versiones se devuelven de más reciente a más antigua, porque el
+        formateador toma version[0] como "versión actual".
+        """
+        from lxml import etree
+
+        url = f"{self.BASE_URL}{endpoint}"
+        response = await self._make_request(
+            method="GET",
+            url=url,
+            headers={"Accept": "application/xml"},
+        )
+
+        try:
+            root = etree.fromstring(response.text.encode("utf-8"))
+        except etree.XMLSyntaxError as e:
+            raise APIError(codigo=500, mensaje=f"Error parseando XML de /texto/bloque: {e}")
+
+        bloque_el = root.find(".//data/bloque")
+        if bloque_el is None:
+            bloque_el = root.find(".//bloque")
+        if bloque_el is None:
+            return {"data": {}}
+
+        versiones = []
+        for ver_el in bloque_el.findall("version"):
+            partes_html = []
+            for child in ver_el:
+                try:
+                    partes_html.append(etree.tostring(child, encoding="unicode", with_tail=True))
+                except Exception:
+                    pass
+            versiones.append({
+                "id_norma": ver_el.get("id_norma", ""),
+                "fecha_publicacion": ver_el.get("fecha_publicacion", ""),
+                "fecha_vigencia": ver_el.get("fecha_vigencia", ""),
+                "contenido_html": "".join(partes_html),
+            })
+
+        versiones.sort(
+            key=lambda v: v.get("fecha_vigencia") or v.get("fecha_publicacion") or "",
+            reverse=True,
+        )
+
+        return {"data": {"bloque": {
+            "id": bloque_el.get("id", ""),
+            "tipo": bloque_el.get("tipo", ""),
+            "titulo": bloque_el.get("titulo", ""),
+            "version": versiones,
+        }}}
 
     async def get_boe_summary(
         self,
