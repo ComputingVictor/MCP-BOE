@@ -39,7 +39,7 @@ class BOEHTTPClient:
         'legislation': '/legislacion-consolidada',
         'boe_summary': '/boe/sumario',
         'borme_summary': '/borme/sumario',
-        'auxiliary': '/tablas-auxiliares'
+        'auxiliary': '/datos-auxiliares'
     }
     
     # Configuración por defecto
@@ -566,10 +566,50 @@ class BOEHTTPClient:
             table_name: Nombre de la tabla (departamentos, rangos, etc.)
             
         Returns:
-            Datos de la tabla auxiliar
+            Datos de la tabla auxiliar normalizados
         """
         endpoint = f"{self.ENDPOINTS['auxiliary']}/{table_name}"
-        return await self.get(endpoint=endpoint)
+        raw_data = await self.get(endpoint=endpoint)
+
+        # Si es un diccionario plano (formato JSON de la API del BOE: {codigo: descripcion}),
+        # lo normalizamos al esquema estructurado esperado por el resto del MCP.
+        if isinstance(raw_data, dict) and "data" not in raw_data:
+            entradas = [
+                {
+                    "codigo": str(k),
+                    "descripcion": str(v).strip(),
+                    "activo": True
+                }
+                for k, v in raw_data.items()
+            ]
+            return {
+                "data": {
+                    "nombre": table_name,
+                    "descripcion": f"Tabla de {table_name}",
+                    "entradas": entradas,
+                    "total_entradas": len(entradas)
+                }
+            }
+
+        # Si es XML parseado, 'data' tendrá una clave 'item' que normalizamos a 'entradas'
+        if isinstance(raw_data, dict) and "data" in raw_data:
+            data_sec = raw_data["data"]
+            if isinstance(data_sec, dict) and "item" in data_sec and "entradas" not in data_sec:
+                items = data_sec["item"]
+                if not isinstance(items, list):
+                    items = [items]
+                entradas = []
+                for item in items:
+                    if isinstance(item, dict):
+                        entradas.append({
+                            "codigo": str(item.get("codigo", "")),
+                            "descripcion": str(item.get("descripcion", "")).strip(),
+                            "activo": item.get("activo", True) if "activo" in item else True
+                        })
+                data_sec["entradas"] = entradas
+                data_sec["total_entradas"] = len(entradas)
+
+        return raw_data
 
     # ========================================================================
     # MÉTODOS DE CONVENIENCIA
