@@ -18,6 +18,26 @@ from ..models.boe_models import validate_date_format, format_date_for_api
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# `url_pdf` es un OBJETO, no una cadena
+# ---------------------------------------------------------------------------
+# La API devuelve {"szBytes": "317144", "szKBytes": "310", "texto": "https://…"}.
+# Antes se interpolaba directamente en el markdown, así que el enlace del
+# sumario salía como `[N/A KB]({'szBytes': '317144', …})`: ni el usuario puede
+# pulsarlo ni el modelo puede pasárselo a `read_boe_pdf`, que es justo lo que su
+# descripción le dice que haga con el campo url_pdf.
+def _pdf_link(raw: Any, fallback_size: Any = None) -> tuple[str | None, str]:
+    """Devuelve (url, tamaño_en_kb) a partir de un `url_pdf` en cualquiera de sus
+    dos formas: objeto {texto, szKBytes} (JSON) o cadena suelta (XML)."""
+    if isinstance(raw, dict):
+        url = raw.get("texto") or raw.get("url") or None
+        size = raw.get("szKBytes") or raw.get("size_kbytes") or fallback_size or "N/A"
+        return url, str(size)
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip(), str(fallback_size or "N/A")
+    return None, str(fallback_size or "N/A")
+
+
 class SummaryTools:
     """Herramientas para trabajar con sumarios del BOE y BORME."""
     
@@ -354,8 +374,9 @@ class SummaryTools:
             # URL del sumario completo
             sumario_info = diario.get('sumario_diario', {})
             if include_pdf_links and sumario_info.get('url_pdf'):
-                size_kb = sumario_info.get('size_kbytes', 'N/A')
-                output.append(f"**Sumario completo PDF:** [{size_kb} KB]({sumario_info['url_pdf']})")
+                pdf_url, size_kb = _pdf_link(sumario_info.get('url_pdf'), sumario_info.get('size_kbytes'))
+                if pdf_url:
+                    output.append(f"**Sumario completo PDF:** [{size_kb} KB]({pdf_url})")
             
             output.append("")
 
@@ -441,9 +462,8 @@ class SummaryTools:
                 items.append(f"  - ID: `{identificador}`")
                 
                 if include_pdf_links:
-                    pdf_url = item.get('url_pdf')
+                    pdf_url, size_kb = _pdf_link(item.get('url_pdf'), item.get('size_kbytes'))
                     if pdf_url:
-                        size_kb = item.get('size_kbytes', 'N/A')
                         items.append(f"  - PDF: [{size_kb} KB]({pdf_url})")
                 
                 # Información específica del BORME
@@ -632,7 +652,7 @@ class SummaryTools:
                             'identificador': item.get('identificador', 'N/A'),
                             'departamento': dept_nombre,
                             'seccion': seccion_nombre,
-                            'pdf_url': item.get('url_pdf')
+                            'pdf_url': _pdf_link(item.get('url_pdf'))[0]
                         })
 
         return matching_docs
@@ -857,8 +877,9 @@ class SummaryTools:
             # URL del sumario completo
             sumario_info = diario.get('sumario_diario', {})
             if include_pdf_links and sumario_info.get('url_pdf'):
-                size_kb = sumario_info.get('size_kbytes', 'N/A')
-                output.append(f"**Sumario completo PDF:** [{size_kb} KB]({sumario_info['url_pdf']})")
+                pdf_url, size_kb = _pdf_link(sumario_info.get('url_pdf'), sumario_info.get('size_kbytes'))
+                if pdf_url:
+                    output.append(f"**Sumario completo PDF:** [{size_kb} KB]({pdf_url})")
             
             output.append("")
 
@@ -971,9 +992,8 @@ class SummaryTools:
                     items.append(f"  - Epígrafe: {epigrafe_name}")
                 
                 if include_pdf_links:
-                    pdf_url = item.get('url_pdf')
+                    pdf_url, size_kb = _pdf_link(item.get('url_pdf'), item.get('size_kbytes'))
                     if pdf_url:
-                        size_kb = item.get('size_kbytes', 'N/A')
                         paginas = ""
                         pag_ini = item.get('pagina_inicial')
                         pag_fin = item.get('pagina_final')
