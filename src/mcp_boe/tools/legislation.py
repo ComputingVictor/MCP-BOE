@@ -356,7 +356,8 @@ class LegislationTools:
                 legal_range=legal_range_code,
                 matter=matter_code,
                 date_from=from_date,
-                date_to=to_date
+                date_to=to_date,
+                text_mode="title_phrase"
             )
 
             # Realizar búsqueda
@@ -379,40 +380,57 @@ class LegislationTools:
 
             fallback_note = ""
 
-            # — Reintento automático —————————————————————————————————————
-            # Si no hay resultados y el usuario buscó por query (texto libre),
-            # volvemos a intentar con cada palabra suelta en lugar de la frase
-            # completa. Así "gases licuados del petróleo" también encuentra
-            # documentos que solo contienen "petróleo" o "gases licuados".
+            # — Escalado de búsqueda ————————————————————————————————————
+            # El BOE no ordena por relevancia, así que buscar en el texto completo
+            # ahoga los aciertos de título. Se empieza por lo estrecho y solo se
+            # ensancha cuando no hay NADA, diciendo siempre en qué escalón se
+            # respondió — si el modelo no sabe que la búsqueda se ha ensanchado,
+            # presenta un resultado lejano como si fuera el que se pidió.
+            #   1. frase exacta en el título   (lo que la gente pide casi siempre)
+            #   2. todas las palabras en el título, en cualquier orden
+            #   3. frase exacta en el título O en el texto completo
+            async def _retry(mode: str):
+                q = self.client.build_search_query(
+                    text=query,
+                    department=department_code,
+                    legal_range=legal_range_code,
+                    matter=matter_code,
+                    date_from=from_date,
+                    date_to=to_date,
+                    text_mode=mode
+                )
+                resp = await self.client.search_legislation(
+                    query=q,
+                    from_date=from_date,
+                    to_date=to_date,
+                    offset=offset,
+                    limit=limit
+                )
+                found = self._extract_results(resp)
+                if not include_derogated:
+                    found = [
+                        r for r in found
+                        if r.get('vigencia_agotada') != 'S' and r.get('estatus_derogacion') != 'S'
+                    ]
+                return found
+
             if not results and query and not title:
-                words = [w for w in query.split() if len(w) > 3]
-                if words:
-                    fallback_query = self.client.build_search_query(
-                        text=" OR ".join(words),
-                        department=department_code,
-                        legal_range=legal_range_code,
-                        matter=matter_code,
-                        date_from=from_date,
-                        date_to=to_date
-                    )
-                    logger.info(f"Sin resultados exactos, reintentando con términos sueltos: {words}")
-                    fb_response = await self.client.search_legislation(
-                        query=fallback_query,
-                        from_date=from_date,
-                        to_date=to_date,
-                        offset=offset,
-                        limit=limit
-                    )
-                    results = self._extract_results(fb_response)
-                    if not include_derogated:
-                        results = [r for r in results if r.get('vigencia_agotada') != 'S' and r.get('estatus_derogacion') != 'S']
+                if len(query.split()) > 1:
+                    results = await _retry("title_words")
                     if results:
                         fallback_note = (
-                            f"> ⚠️ **No se encontraron resultados exactos para «{query}».**\n"
-                            f"> La búsqueda se amplió usando los términos sueltos: "
-                            f"{', '.join(f'`{w}`' for w in words)}.\n"
-                            f"> Si los resultados no son los esperados, prueba con la denominación "
-                            f"técnica oficial (p. ej. «gases licuados del petróleo» en vez de «gasolina»).\n\n"
+                            f"> ⚠️ **Ninguna norma se titula exactamente «{query}».**\n"
+                            f"> Estos resultados llevan todas esas palabras en el título, "
+                            f"pero en otro orden.\n\n"
+                        )
+                if not results:
+                    results = await _retry("fulltext")
+                    if results:
+                        fallback_note = (
+                            f"> ⚠️ **Ninguna norma se TITULA «{query}».**\n"
+                            f"> Estos resultados solo MENCIONAN esa expresión en su texto, así que "
+                            f"pueden tratar de otra cosa. Comprueba el título antes de citarlos, y "
+                            f"si buscas una norma concreta prueba con su denominación oficial.\n\n"
                         )
 
             if not results:

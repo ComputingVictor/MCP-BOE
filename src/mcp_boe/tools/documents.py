@@ -7,6 +7,7 @@ y lo devuelve listo para que el LLM lo analice.
 
 import io
 import logging
+from urllib.parse import urljoin, urlparse
 from typing import Any, Dict, List
 
 import httpx
@@ -19,6 +20,28 @@ MAX_PDF_BYTES = 10 * 1024 * 1024
 
 # Caracteres máximos que devolvemos al LLM (~100 k tokens aprox.)
 MAX_TEXT_CHARS = 80_000
+
+# ---------------------------------------------------------------------------
+# Allowlist estricta de host (SSRF)
+# ---------------------------------------------------------------------------
+# Antes bastaba con `source.startswith("http")` para aceptar la URL, que luego se
+# descargaba con follow_redirects=True devolviendo el cuerpo al modelo. Eso hace de
+# `read_boe_pdf` un lector de URLs arbitrarias con la identidad de red del proceso:
+# el endpoint de metadatos del proveedor cloud, servicios internos accesibles solo
+# desde esa red, o exfiltración (el modelo acaba pegando el contenido en el chat).
+# Una denylist no basta — hay que fijar los hosts permitidos, y revalidar en CADA
+# salto de redirección, porque si no un 302 desde boe.es esquiva el filtro.
+ALLOWED_PDF_HOSTS = frozenset({"boe.es", "www.boe.es"})
+MAX_REDIRECTS = 5
+
+
+def _host_allowed(url: str) -> bool:
+    """True solo para https://(www.)boe.es/... — todo lo demás se rechaza."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and (parsed.hostname or "").lower() in ALLOWED_PDF_HOSTS
 
 
 class DocumentTools:
@@ -114,7 +137,8 @@ class DocumentTools:
     async def _resolve_url(self, source: str) -> str | None:
         """Convierte un identificador BOE o URL parcial en URL completa de PDF."""
         if source.startswith("http"):
-            return source
+            # solo boe.es. Ver ALLOWED_PDF_HOSTS.
+            return source if _host_allowed(source) else None
 
         # Normalizar: quitar extensión si la trae
         boe_id = source.removesuffix(".pdf").strip()
@@ -174,12 +198,29 @@ class DocumentTools:
         return None
 
     async def _download_pdf(self, url: str) -> bytes:
+        # follow_redirects=False + bucle manual, para poder
+        # rechazar un 302 que salga de boe.es (con follow_redirects=True la
+        # petición al host ajeno ya se habría hecho).
+        if not _host_allowed(url):
+            raise ValueError(f"Host no permitido: solo se descargan PDFs de boe.es ({url})")
+
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(60.0),
-            follow_redirects=True,
+            follow_redirects=False,
             headers={"User-Agent": "MCP-BOE/0.1.0 (https://github.com/ComputingVictor/MCP-BOE)"},
         ) as client:
-            response = await client.get(url)
+            for _ in range(MAX_REDIRECTS):
+                response = await client.get(url)
+                if not response.is_redirect:
+                    break
+                url = urljoin(url, response.headers.get("location", ""))
+                if not _host_allowed(url):
+                    raise ValueError(
+                        f"Redirección fuera de boe.es bloqueada: {url}"
+                    )
+            else:
+                raise ValueError("Demasiadas redirecciones")
+
             response.raise_for_status()
 
             content_type = response.headers.get("content-type", "")

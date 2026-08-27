@@ -594,6 +594,30 @@ class BOEHTTPClient:
         # Si es XML parseado, 'data' tendrá una clave 'item' que normalizamos a 'entradas'
         if isinstance(raw_data, dict) and "data" in raw_data:
             data_sec = raw_data["data"]
+            # la API JSON devuelve {"status":…, "data": {codigo: nombre}}.
+            # Upstream solo normalizaba el diccionario plano cuando venía SIN envoltorio
+            # "data", así que por esta rama `entradas` nunca se rellenaba y las 5 tablas
+            # auxiliares contestaban "No se encontraron …" con un 200 limpio. Verificado
+            # contra la API real el 2026-08-27.
+            if (
+                isinstance(data_sec, dict)
+                and "item" not in data_sec
+                and "entradas" not in data_sec
+                and data_sec
+                and all(isinstance(v, str) for v in data_sec.values())
+            ):
+                entradas = [
+                    {"codigo": str(k), "descripcion": str(v).strip(), "activo": True}
+                    for k, v in data_sec.items()
+                ]
+                return {
+                    "data": {
+                        "nombre": table_name,
+                        "descripcion": f"Tabla de {table_name}",
+                        "entradas": entradas,
+                        "total_entradas": len(entradas),
+                    }
+                }
             if isinstance(data_sec, dict) and "item" in data_sec and "entradas" not in data_sec:
                 items = data_sec["item"]
                 if not isinstance(items, list):
@@ -637,7 +661,8 @@ class BOEHTTPClient:
         legal_range: Optional[str] = None,
         matter: Optional[str] = None,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
+        text_mode: str = "title_phrase"
     ) -> str:
         """
         Construye una consulta de búsqueda estructurada.
@@ -650,17 +675,35 @@ class BOEHTTPClient:
             matter: Código de materia
             date_from: Fecha desde
             date_to: Fecha hasta
-            
+            text_mode: cómo se busca `text` :
+                "title_phrase" — frase exacta en el título (por defecto, el que acierta)
+                "title_words"  — todas las palabras en el título, en cualquier orden
+                "fulltext"     — frase exacta en título O en el texto completo
+
         Returns:
             Query JSON para la API
         """
         query_parts = []
 
         if text:
-            # Busca en título Y texto completo. Cada término va entre paréntesis
-            # para que el OR tenga precedencia correcta con el AND del resto de filtros.
+            # el modo de búsqueda de texto es un parámetro, no una
+            # forma fija. La forma anterior, `(titulo:(t) OR texto:(t))` sin
+            # comillas, trocea la frase y hace un OR implícito laxísimo: medido contra
+            # la API real el 2026-08-27, «protección de datos» devolvía como primer
+            # resultado la Ley General de Subvenciones (matchea «datos» en su texto),
+            # y fallaba igual con «gases licuados del petróleo», que es el ejemplo que
+            # ponía el propio comentario de esta función. El BOE no reordena por
+            # relevancia, así que meter `texto:` en el OR ahoga los aciertos de título.
+            # Un resultado plausible y equivocado, sin error: quien pregunte por la
+            # LOPD se lleva una ley de subvenciones citada con aplomo.
             terms = text.strip()
-            query_parts.append(f'(titulo:({terms}) OR texto:({terms}))')
+            if text_mode == "fulltext":
+                query_parts.append(f'(titulo:"{terms}" OR texto:"{terms}")')
+            elif text_mode == "title_words":
+                words = " AND ".join(w for w in terms.split() if w)
+                query_parts.append(f'titulo:({words})')
+            else:  # "title_phrase" — el escalón por defecto
+                query_parts.append(f'titulo:"{terms}"')
         if title:
             # Búsqueda específica en título: usamos comillas para frase exacta
             query_parts.append(f'titulo:"{title}"')
